@@ -1,0 +1,26 @@
+[
+  {
+    "Group": "ros",
+    "File": "ros2-humble-20260220-windows-release-amd64.zip",
+    "Url": "https://github.com/ros2/ros2/releases/download/release-humble-20260220/ros2-humble-20260220-windows-release-amd64.zip",
+    "Sha256": "256abcfa37f8d97d2cb3ff2a85f53465b016a25632399c99f67dc2bee18e89c3"
+  },
+  {
+    "Group": "pixi",
+    "File": "pixi-x86_64-pc-windows-msvc.exe",
+    "Url": "https://github.com/prefix-dev/pixi/releases/download/v0.75.0/pixi-x86_64-pc-windows-msvc.exe",
+    "Sha256": "63ec8945eed67b74ead220d1ece1167ac39166ef4f804ee46c37daf7105ec232"
+  },
+  {
+    "Group": "vc",
+    "File": "VC_redist.x64.exe",
+    "Url": "https://download.visualstudio.microsoft.com/download/pr/78d061c5-9ef3-42ab-98ed-3309d1095dc4/9C02C9ED120F671B900E6B9471D890E3B2414117A7E53F4AE2E855466FA2B7C9/VC_redist.x64.exe",
+    "Sha256": "9c02c9ed120f671b900e6b9471d890e3b2414117a7e53f4ae2e855466fa2b7c9"
+  },
+  {
+    "Group": "vs",
+    "File": "vs_BuildTools.exe",
+    "Url": "https://download.visualstudio.microsoft.com/download/pr/9dacffc2-1f48-4c30-82da-123d3fe0e842/e9479dc67e41704f99dfcf3878df5b0a6da4377218103df9226ea6a96c13a1dc/vs_BuildTools.exe",
+    "Sha256": "e9479dc67e41704f99dfcf3878df5b0a6da4377218103df9226ea6a96c13a1dc"
+  }
+]

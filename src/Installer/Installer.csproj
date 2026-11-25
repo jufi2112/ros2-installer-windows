@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>Ros2HumbleSetup</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Engine/Engine.csproj" />
+    <ProjectReference Include="../Wizard/Wizard.csproj" />
+  </ItemGroup>
+</Project>

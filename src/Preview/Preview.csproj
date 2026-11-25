@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>Ros2HumblePreview</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup><ProjectReference Include="../Wizard/Wizard.csproj" /></ItemGroup>
+</Project>

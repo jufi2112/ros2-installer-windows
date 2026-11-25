@@ -172,6 +172,10 @@ conda-meta/
 # mkdocs/Zensical documentation
 /site
 
+# .NET build output
+[Bb]in/
+[Oo]bj/
+
 # mypy
 .mypy_cache/
 .dmypy.json

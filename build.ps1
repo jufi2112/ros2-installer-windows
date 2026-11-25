@@ -1,0 +1,76 @@
+param(
+    [switch] $BuildOffline,
+    [switch] $PreviewOnly,
+    [string] $Dotnet = 'dotnet'
+)
+
+$ErrorActionPreference = 'Stop'
+$projectRoot = $PSScriptRoot
+if ($BuildOffline -and $PreviewOnly) { throw 'Choose either -BuildOffline or -PreviewOnly.' }
+
+$env:DOTNET_CLI_HOME = Join-Path $projectRoot 'build/dotnet-home'
+$env:NUGET_PACKAGES = Join-Path $projectRoot 'build/nuget'
+$env:DOTNET_CLI_TELEMETRY_OPTOUT = '1'
+$env:DOTNET_GENERATE_ASPNET_CERTIFICATE = 'false'
+$env:DOTNET_ADD_GLOBAL_TOOLS_TO_PATH = 'false'
+
+function Invoke-Checked {
+    param([string] $File, [string[]] $Arguments)
+    & $File @Arguments
+    if ($LASTEXITCODE -ne 0) { throw "$File returned exit code $LASTEXITCODE." }
+}
+
+function Publish-App {
+    param([string] $Project, [string] $Output)
+    $source = Join-Path $projectRoot "src/$Project/$Project.csproj"
+    Invoke-Checked $Dotnet @('publish', $source, '--configuration', 'Release', '--runtime', 'win-x64',
+        '--self-contained', 'true', '-p:PublishSingleFile=true', '-p:IncludeNativeLibrariesForSelfExtract=true',
+        '-p:DebugType=none', '--output', $Output)
+}
+
+$dist = Join-Path $projectRoot 'dist'
+if ($PreviewOnly) {
+    Publish-App 'Preview' (Join-Path $dist 'preview')
+    return
+}
+
+$online = Join-Path $dist 'online'
+Publish-App 'Installer' $online
+Publish-App 'Cli' $online
+if (!$BuildOffline) { return }
+
+$osType = & docker info --format '{{.OSType}}'
+if ($LASTEXITCODE -ne 0 -or $osType -ne 'windows') {
+    throw 'An active Windows container engine is required for the offline payload build.'
+}
+
+$buildId = [Guid]::NewGuid().ToString('N')
+$work = Join-Path $projectRoot "build/offline-$buildId"
+$bundle = Join-Path $work 'bundle'
+$context = Join-Path $work 'image'
+New-Item -ItemType Directory -Path $bundle, $context | Out-Null
+$cli = Join-Path $online 'Ros2HumbleCli.exe'
+Copy-Item -LiteralPath $cli -Destination $context
+Copy-Item -LiteralPath (Join-Path $online 'Ros2HumbleSetup.exe'), $cli -Destination $bundle
+$image = "ros2-humble-offline-builder:$buildId"
+@'
+FROM mcr.microsoft.com/dotnet/framework/sdk:4.8-windowsservercore-ltsc2022
+COPY Ros2HumbleCli.exe /builder/
+'@ | Set-Content -LiteralPath (Join-Path $context 'Dockerfile') -Encoding Ascii
+Invoke-Checked 'docker' @('build', '--isolation=hyperv', '--tag', $image, $context)
+
+$container = & docker create --isolation=hyperv $image 'C:/builder/Ros2HumbleCli.exe' '--prepare-offline' 'C:/offline'
+if ($LASTEXITCODE -ne 0 -or !$container) { throw 'Could not create the offline payload build container.' }
+try {
+    Invoke-Checked 'docker' @('start', '--attach', $container)
+    $exitCode = & docker inspect --format '{{.State.ExitCode}}' $container
+    if ($LASTEXITCODE -ne 0 -or "$exitCode" -ne '0') { throw "Offline payload preparation failed ($exitCode)." }
+    Invoke-Checked 'docker' @('cp', "${container}:C:/offline/payload", $bundle)
+    Invoke-Checked 'docker' @('cp', "${container}:C:/offline/offline.json", $bundle)
+    $zip = Join-Path $dist 'ros2-humble-offline-win-x64.zip'
+    Invoke-Checked 'tar.exe' @('-a', '-cf', $zip, '-C', $bundle, '.')
+    Write-Output "Offline installer: $zip"
+}
+finally {
+    & docker rm $container | Out-Null
+}

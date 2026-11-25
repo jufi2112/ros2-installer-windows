@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../Model/Model.csproj" />
+    <EmbeddedResource Include="../../packaging/payloads.json" LogicalName="payloads.json" />
+  </ItemGroup>
+</Project>
