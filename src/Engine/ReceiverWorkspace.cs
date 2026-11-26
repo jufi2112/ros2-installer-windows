@@ -176,8 +176,8 @@ internal sealed class ReceiverWorkspace(string rosRoot, string rosLauncher, stri
             set "PYTHONUNBUFFERED=1"
             echo WalkableOR Point Cloud Receiver
             echo Config "%CONFIG%"
-            echo DDS %RMW_IMPLEMENTATION%, ROS domain %ROS_DOMAIN_ID%, Unity TCP 127.0.0.1:10000
-            ros2 run ros_tcp_endpoint default_server_endpoint "%CONFIG%" --ros-args -p ROS_IP:=127.0.0.1 -p ROS_TCP_PORT:=10000
+            echo DDS %RMW_IMPLEMENTATION%, ROS domain %ROS_DOMAIN_ID%, Unity TCP listening on 0.0.0.0:10000
+            ros2 run ros_tcp_endpoint default_server_endpoint "%CONFIG%" --ros-args -p ROS_IP:=0.0.0.0 -p ROS_TCP_PORT:=10000
             set "RECEIVER_EXIT=%ERRORLEVEL%"
             popd
             exit /b %RECEIVER_EXIT%
@@ -206,7 +206,8 @@ internal sealed class ReceiverWorkspace(string rosRoot, string rosLauncher, stri
     {
         Arguments = $"/d /v:off /s /c \"call \"{rosLauncher}\" && {command}\"",
         WorkingDirectory = _root, UseShellExecute = false, CreateNoWindow = true,
-        RedirectStandardOutput = true, RedirectStandardError = true
+        RedirectStandardOutput = true, RedirectStandardError = true,
+        Environment = { ["ROS2_SETUP_INTERNAL"] = "1" }
     };
 
     private static void RejectLink(string path)

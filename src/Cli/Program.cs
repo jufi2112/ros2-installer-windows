@@ -107,6 +107,7 @@ static async Task<int> MainAsync(string[] args)
             Console.WriteLine($"ROS command prompt: {install.Launcher}");
             if (install.ReceiverCompletionMessage is { } receiverMessage)
                 Console.WriteLine(receiverMessage);
+            Console.WriteLine($"To uninstall ROS 2 Humble later, open:\n{install.Uninstaller}");
         }
         return 0;
     }

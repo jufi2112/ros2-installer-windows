@@ -21,6 +21,11 @@ public sealed record Options(
 
 public sealed record Step(string Title, string Detail, bool RequiresAdmin = false);
 
+public static class UninstallLayout
+{
+    public const string LauncherName = "Uninstall ROS 2 Humble.cmd";
+}
+
 public static class ReceiverLayout
 {
     public const string Folder = "pointcloud_receiver";
@@ -44,6 +49,7 @@ public interface IInstallation
     IReadOnlyList<Step> Steps { get; }
     IReadOnlyList<string> Reused { get; }
     string Launcher { get; }
+    string Uninstaller { get; }
     string? ReceiverCompletionMessage { get; }
     string? LogPath { get; }
     Task ExecuteAsync(int index);

@@ -122,6 +122,7 @@ public partial class SetupWindow : Window
                 var message = $"Open the ROS command prompt or run:\n{installation.Launcher}";
                 if (installation.ReceiverCompletionMessage is { } receiverMessage)
                     message += $"\n\n{receiverMessage}";
+                message += $"\n\nTo uninstall ROS 2 Humble later, open:\n{installation.Uninstaller}";
                 Finish("ROS 2 Humble is ready", message);
             }
             else ShowConfirmation();

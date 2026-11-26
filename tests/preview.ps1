@@ -117,6 +117,9 @@ Invoke-Scenario {
     if ((Get-Details) -notmatch 'pointcloud_receiver\\configs\\walkableOR\.yaml') {
         throw 'The receiver completion reminder should include the configuration path.'
     }
+    if ((Get-Details) -notlike '*Uninstall ROS 2 Humble.cmd*') {
+        throw 'The completion screen should show the uninstaller path.'
+    }
 }
 
 Invoke-Scenario {

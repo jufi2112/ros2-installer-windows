@@ -15,6 +15,7 @@ internal static class Program
         public IReadOnlyList<Step> Steps { get; } = Plan(options);
         public IReadOnlyList<string> Reused => [];
         public string Launcher => System.IO.Path.Combine(options.Destination, "ros-humble.cmd");
+        public string Uninstaller => System.IO.Path.Combine(options.Destination, UninstallLayout.LauncherName);
         public string? ReceiverCompletionMessage => options.WalkableOrReceiver
             ? ReceiverLayout.CompletionMessage(ReceiverLayout.ConfigPath(options.Destination), options.WalkableOrProject is not null)
             : null;
@@ -34,6 +35,7 @@ internal static class Program
                 new("Download and verify ROS 2 Humble", "Fetch the pinned Windows archive from GitHub."),
                 new("Set up prerequisites", "Install the required Python and Visual C++ runtimes.", true),
                 new("Extract ROS 2 Humble", options.Destination),
+                new("Create the ROS 2 uninstaller", "Add the clickable uninstaller to the installation folder."),
                 new("Configure ROS command prompt", $"RMW_IMPLEMENTATION={options.Rmw}")
             };
             if (options.Development) steps.Add(new("Install C++ development tools", "Set up the Visual Studio 2019 C++ workload.", true));

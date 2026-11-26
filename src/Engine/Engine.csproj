@@ -3,5 +3,7 @@
     <ProjectReference Include="../Model/Model.csproj" />
     <EmbeddedResource Include="../../packaging/payloads.json" LogicalName="payloads.json" />
     <EmbeddedResource Include="../../packaging/receiver-source.json" LogicalName="receiver-source.json" />
+    <EmbeddedResource Include="../../packaging/uninstall-ros-humble.ps1" LogicalName="uninstall-ros-humble.ps1" />
+    <EmbeddedResource Include="../../packaging/ros-shells.ps1" LogicalName="ros-shells.ps1" />
   </ItemGroup>
 </Project>

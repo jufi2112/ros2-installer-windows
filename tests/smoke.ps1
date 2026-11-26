@@ -112,6 +112,9 @@ function Test-ReceiverHandshake {
             Start-Sleep -Milliseconds 300
         }
         if (!$client -or !$client.Connected) { throw 'The receiver did not open TCP port 10000.' }
+        if (!(netstat.exe -an -p tcp | Select-String -Quiet '^\s*TCP\s+0\.0\.0\.0:10000\s+0\.0\.0\.0:0\s')) {
+            throw 'The receiver should listen on all IPv4 interfaces on port 10000.'
+        }
 
         $client.ReceiveTimeout = 5000
         $reader = [IO.BinaryReader]::new($client.GetStream())
@@ -128,6 +131,10 @@ function Test-ReceiverHandshake {
         finally { $reader.Dispose() }
         if (!(Select-String -LiteralPath $stdout -SimpleMatch "DDS $Rmw" -Quiet)) {
             throw "The receiver launcher did not inherit $Rmw."
+        }
+        . (Join-Path $location 'ros-shells.ps1')
+        if (@(Get-RosProcesses $location) -notcontains "WalkableOR receiver terminal (PID $($process.Id))") {
+            throw 'The running receiver terminal was missing from the uninstall check.'
         }
     }
     catch {
@@ -271,6 +278,86 @@ int main(int argc, char **argv) {
         if ($LASTEXITCODE -ne 0) { throw 'Optional runtime checks failed.' }
     }
     finally { Pop-Location }
+}
+
+$uninstaller = Join-Path $location 'Uninstall ROS 2 Humble.cmd'
+if (!(Test-Path -LiteralPath $uninstaller -PathType Leaf)) { throw 'The clickable uninstaller is missing.' }
+. (Join-Path $location 'uninstall-ros-humble.ps1')
+if ((Invoke-RosUninstall $location {
+        param($root)
+        if ($root -ne $location) { throw 'The confirmation should display the installation path.' }
+        return $false
+    }) -or
+    !(Test-Path -LiteralPath $receiverConfig -PathType Leaf)) { throw 'Cancelling should preserve the installation.' }
+
+# A pre-existing cmd.exe has no ROS launcher path on its original command line.
+# It must still block uninstall after calling the installed ROS launcher.
+$start = [Diagnostics.ProcessStartInfo]::new($env:ComSpec)
+$start.Arguments = '/d /q'
+$start.WorkingDirectory = 'C:\'
+$start.UseShellExecute = $false
+$start.CreateNoWindow = $true
+$start.RedirectStandardInput = $true
+$start.RedirectStandardOutput = $true
+$start.RedirectStandardError = $true
+$prompt = [Diagnostics.Process]::Start($start)
+try {
+    $out = $prompt.StandardOutput.ReadToEndAsync()
+    $err = $prompt.StandardError.ReadToEndAsync()
+    $prompt.StandardInput.WriteLine("call `"$launcher`"")
+    $record = Join-Path $location ".ros2-shells\$($prompt.Id).txt"
+    $deadline = [DateTime]::UtcNow.AddSeconds(30)
+    while (!(Test-Path -LiteralPath $record) -and !$prompt.HasExited -and [DateTime]::UtcNow -lt $deadline) {
+        Start-Sleep -Milliseconds 200
+    }
+    if (!(Test-Path -LiteralPath $record)) { throw 'A CMD session calling ros-humble.cmd did not register.' }
+    $blocked = Invoke-RosUninstall $location { return $true } {
+        param($root, $active)
+        if ($root -ne $location -or $active -notcontains "ROS command prompt (PID $($prompt.Id))") {
+            throw 'The waiting dialog should receive the open ROS command prompt.'
+        }
+        return $false
+    }
+    if ($blocked -or !(Test-Path -LiteralPath $receiverConfig -PathType Leaf)) {
+        throw 'Cancelling while waiting for a ROS prompt should preserve the installation.'
+    }
+    $prompt.StandardInput.WriteLine('exit')
+    if (!$prompt.WaitForExit(10000)) { throw 'The test ROS command prompt did not close.' }
+}
+finally {
+    if (!$prompt.HasExited) { $prompt.Kill(); $prompt.WaitForExit() }
+    $prompt.Dispose()
+}
+. (Join-Path $location 'ros-shells.ps1')
+if (@(Get-RosProcesses $location).Count -ne 0) { throw 'Closed ROS processes should no longer block uninstall.' }
+
+$desktop = [Environment]::GetFolderPath('DesktopDirectory')
+$userShortcut = Join-Path $desktop 'ROS 2 Humble Command Prompt.lnk'
+$shell = New-Object -ComObject WScript.Shell
+$link = $shell.CreateShortcut($userShortcut)
+$link.Arguments = '/k echo User-owned shortcut'
+$link.Save()
+$shortcutHash = (Get-FileHash -LiteralPath $userShortcut).Hash
+$outside = 'C:\uninstall-smoke-outside'
+New-Item -ItemType Directory -Path $outside | Out-Null
+$outsideFile = Join-Path $outside 'keep.txt'
+Set-Content -LiteralPath $outsideFile -Value 'preserve this file'
+New-Item -ItemType Junction -Path (Join-Path $location 'outside-junction') -Target $outside | Out-Null
+
+$runtime = Join-Path ([Environment]::SystemDirectory) 'vcruntime140_1.dll'
+$runtimeHash = (Get-FileHash -LiteralPath $runtime).Hash
+if (!(Invoke-RosUninstall $location { return $true }) -or (Test-Path -LiteralPath $location)) {
+    throw 'Confirmed uninstall should remove the installation folder.'
+}
+$startMenu = [Environment]::GetFolderPath('Programs')
+if ((Test-Path -LiteralPath (Join-Path $startMenu 'ROS 2 Humble Command Prompt.lnk')) -or
+    (Test-Path -LiteralPath (Join-Path $desktop 'Start Point Cloud Receiver.lnk'))) {
+    throw 'Confirmed uninstall should remove the installation shortcuts.'
+}
+if ((Get-FileHash -LiteralPath $userShortcut).Hash -ne $shortcutHash -or
+    !(Test-Path -LiteralPath $outsideFile -PathType Leaf) -or
+    (Get-FileHash -LiteralPath $runtime).Hash -ne $runtimeHash) {
+    throw 'Uninstall should preserve the unrelated shortcut, junction target, and shared Visual C++ runtime.'
 }
 
 Write-Host 'Windows container smoke tests passed.'

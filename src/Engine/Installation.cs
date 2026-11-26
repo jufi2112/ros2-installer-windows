@@ -139,6 +139,9 @@ public sealed class Installation : IInstallation, IDisposable
                 PatchRosAsync);
         }
 
+        Add("Create the ROS 2 uninstaller",
+            $"Create {Uninstaller} and its support scripts in {_destination}.",
+            () => Task.Run(() => UninstallerFiles.Write(_destination, Release)));
         Add("Configure the ROS command prompt", $"Write {Launcher}\nSet RMW_IMPLEMENTATION={options.Rmw} for that shell.",
             () => Task.Run(WriteLauncher));
         if (options.StartMenu) AddShortcut("Start menu", Environment.SpecialFolder.Programs);
@@ -152,6 +155,7 @@ public sealed class Installation : IInstallation, IDisposable
     public IReadOnlyList<Step> Steps => _plan.Select(item => item.Step).ToArray();
     public IReadOnlyList<string> Reused => _reused;
     public string Launcher => Path.Combine(_destination, "ros-humble.cmd");
+    public string Uninstaller => Path.Combine(_destination, UninstallLayout.LauncherName);
     public string? ReceiverCompletionMessage
     {
         get
@@ -305,6 +309,7 @@ public sealed class Installation : IInstallation, IDisposable
         var lines = new List<string>
         {
             "@echo off", LauncherHeader,
+            $"if not defined ROS2_SETUP_INTERNAL \"%SystemRoot%\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\" -NoProfile -ExecutionPolicy RemoteSigned -File \"%~dp0{UninstallerFiles.ShellMonitorName}\"",
             $"set \"CONDA_PREFIX=%~dp0{prefix}\"",
             "set \"COLCON_PYTHON_EXECUTABLE=%CONDA_PREFIX%\\python.exe\"",
             "set \"PYTHONHOME=\"",
@@ -388,7 +393,8 @@ public sealed class Installation : IInstallation, IDisposable
     {
         Arguments = $"/d /v:off /s /c \"call \"{Launcher}\" && ros2 --help && python -c \"from rclpy import init, shutdown; from rclpy.utilities import get_rmw_implementation_identifier as rmw; init(); print(rmw()); assert rmw() == '{_options.Rmw}'; shutdown()\"\"",
         UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true,
-        WorkingDirectory = _destination
+        WorkingDirectory = _destination,
+        Environment = { ["ROS2_SETUP_INTERNAL"] = "1" }
     }, _log, TimeSpan.FromMinutes(2));
 
     private static bool HasVcRuntime()
