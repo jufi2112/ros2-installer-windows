@@ -75,12 +75,3 @@ The following is an overview about what gets put where on the filesystem during 
 | **ROS Command Prompt in Start menu** · on by default | A shortcut to `<ROS>\ros-humble.cmd` | `%APPDATA%\Microsoft\Windows\Start Menu\Programs\ROS 2 Humble Command Prompt.lnk`, using the current user’s Windows Programs folder. |
 | **ROS Command Prompt on desktop** · off by default | A shortcut to `<ROS>\ros-humble.cmd` | `ROS 2 Humble Command Prompt.lnk` in the current user’s Windows desktop folder, which may be redirected to OneDrive or another location. |
 | **Transparency Mode** · on by default | Prompts before each installation step | Uses the same destinations listed above. |
-
-
-## Verify
-
-- **Wizard on Windows 11.** Run `.\tests\preview.ps1` after building the preview, or open `dist\preview\Ros2HumblePreview.exe` and try the defaults, review, step prompts, abort, and automatic progression. Enter `fail` in the destination field to see the error flow. This executable shares the wizard views and uses an in-memory simulator.
-- **Online installation in Docker.** With Windows containers active, run `.\tests\container.ps1`. It uses a disposable Hyper-V-isolated Windows Server Core container with no host mounts. It checks the base ROS demos and the WalkableOR Unity handshake for both DDS backends. It also checks config resolution, shortcut creation, and config preservation on rerun.
-- **Offline installation in Docker.** Run `.\tests\container.ps1 -Offline -Artifacts PATH_TO_EXTRACTED_BUNDLE`. It disables external networking, tests missing and corrupt payloads, installs all components, repeats the DDS checks, and builds a small C++ package.
-- **Windows 11 desktop integration.** Real UAC interaction, launching created shortcuts in Explorer, and rendering ROS graphical tools require a Windows 11 desktop for end-to-end verification.
-- **WalkableOR LAN acceptance.** On an isolated Windows 11 test desktop, copy in a test QoS config and start the receiver from its shortcut. Use a separate LAN ROS 2 publisher on the same domain to send a best-effort `sensor_msgs/msg/PointCloud2` stream. Confirm Unity receives successive clouds, the terminal shows live logs, and closing the terminal releases port `10000`.
