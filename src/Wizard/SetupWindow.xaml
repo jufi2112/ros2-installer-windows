@@ -5,6 +5,7 @@
         WindowStartupLocation="CenterScreen" FontFamily="Segoe UI" FontSize="14"
         Background="#F5F7FA">
     <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
         <Style TargetType="Button">
             <Setter Property="Padding" Value="17,7"/>
             <Setter Property="Margin" Value="8,0,0,0"/>
@@ -41,6 +42,24 @@
                         <ComboBoxItem Content="Fast DDS  ·  RMW_IMPLEMENTATION=rmw_fastrtps_cpp"/>
                     </ComboBox>
                     <TextBlock FontWeight="SemiBold" Text="Optional components" Margin="0,0,0,7"/>
+                    <CheckBox x:Name="WalkableOrReceiver" Content="Install WalkableOR Point Cloud Receiver"/>
+                    <StackPanel Margin="20,0,0,12"
+                                Visibility="{Binding IsChecked, ElementName=WalkableOrReceiver, Converter={StaticResource BoolToVisibility}}">
+                        <RadioButton x:Name="UseLocalProject" GroupName="ReceiverConfigSource"
+                                     Content="Use a local walkableOR_unity project" Margin="0,0,0,6"/>
+                        <StackPanel Margin="20,0,0,7"
+                                    Visibility="{Binding IsChecked, ElementName=UseLocalProject, Converter={StaticResource BoolToVisibility}}">
+                            <Label Target="{Binding ElementName=WalkableOrProject}" Padding="0" Content="walkableOR_unity project folder"/>
+                            <DockPanel Margin="0,4,0,7">
+                                <Button DockPanel.Dock="Right" Content="Browse…" Click="BrowseProjectClicked"/>
+                                <TextBox x:Name="WalkableOrProject" Padding="7,5"/>
+                            </DockPanel>
+                            <CheckBox x:Name="ReplaceWalkableOrConfig" Content="Replace an existing receiver configuration"
+                                      Margin="0"/>
+                        </StackPanel>
+                        <RadioButton x:Name="DeferReceiverConfig" GroupName="ReceiverConfigSource"
+                                     Content="I don’t have the project locally. I’ll supply the file later."/>
+                    </StackPanel>
                     <CheckBox x:Name="Development" Content="C++ development tools"/>
                     <CheckBox x:Name="Visualization" Content="Qt visualization tools"/>
                     <CheckBox x:Name="Graphviz" Content="Graphviz for rqt_graph (includes Qt visualization)"/>

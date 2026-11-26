@@ -22,5 +22,11 @@
     "File": "vs_BuildTools.exe",
     "Url": "https://download.visualstudio.microsoft.com/download/pr/9dacffc2-1f48-4c30-82da-123d3fe0e842/e9479dc67e41704f99dfcf3878df5b0a6da4377218103df9226ea6a96c13a1dc/vs_BuildTools.exe",
     "Sha256": "e9479dc67e41704f99dfcf3878df5b0a6da4377218103df9226ea6a96c13a1dc"
+  },
+  {
+    "Group": "receiver",
+    "File": "ROS-TCP-Endpoint-91be0b80cc6c114f48304f4d42491ac3507a5a18.zip",
+    "Url": "https://codeload.github.com/jufi2112/ROS-TCP-Endpoint/zip/91be0b80cc6c114f48304f4d42491ac3507a5a18",
+    "Sha256": "a3f1d6d9e02e29ed707fbf63b3b8ee547db377a74765bc1af322bab9d0498582"
   }
 ]

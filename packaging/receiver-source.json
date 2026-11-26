@@ -1,0 +1,23 @@
+{
+  "Revision": "91be0b80cc6c114f48304f4d42491ac3507a5a18",
+  "Files": {
+    "LICENSE": "b985eb92333b08a685ad5c0ce3a361ba4e2882880e5607312a5677c97ecc4b05",
+    "launch/endpoint.py": "b49d2155c6f3989af1c084b8b4a0225a1160ee531031687bcca17d9857ad2feb",
+    "package.xml": "eb2263ddcf71337f11db9f9e7782ad65873c7ff589394d7bc2e123460b542986",
+    "resource/ros_tcp_endpoint": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "ros_tcp_endpoint/__init__.py": "91df7b4911bec6b93ef86e714db928880cdb0a50f678ca060ca24080cf87cc2d",
+    "ros_tcp_endpoint/client.py": "b0ac19c5d7137d48cdf13f9e1ebcc1c3850b2217fa626ff81867241c0b5bdab9",
+    "ros_tcp_endpoint/communication.py": "001560af311014edb0ea283202df1bd76e6652407084aac03fa95744698379f7",
+    "ros_tcp_endpoint/default_server_endpoint.py": "54347e93d07f687043a4a01c2fce63d72a436930e55ec0f6178f6ae6a7921c12",
+    "ros_tcp_endpoint/exceptions.py": "11b9e9cb79ef338651cce71a01f43dcbaedf69dbb549e1c2ca666655bf47fb89",
+    "ros_tcp_endpoint/publisher.py": "4cbee08725dcb9b8ca499e37fe08a0f8191dd70e1d566f9c1783a65a18852ce8",
+    "ros_tcp_endpoint/server.py": "f651824c9b4a178de5ca49f07ff5142337e7b76017696e2655bd11073d0b4967",
+    "ros_tcp_endpoint/service.py": "3c5846d73e15cda5728029f98c6506052d127f6031b5341de994c3a608c69e90",
+    "ros_tcp_endpoint/subscriber.py": "7fa80041d0c4b28c0c08d571b4cd93bc1cf74076bf99cd3c363a4212772e15ae",
+    "ros_tcp_endpoint/tcp_sender.py": "4b80d6293124607c4b4626de06f306f82f9d9e4e75c14f12c8ed2dd9a7535949",
+    "ros_tcp_endpoint/thread_pauser.py": "7808155c0c6e67af95901a887808ba39afcd46604f7e4f7bb13519ee1738d7ed",
+    "ros_tcp_endpoint/unity_service.py": "698217f3e9a672674ca4ac0acd5363de275b640f85c19b4e355454c060879d21",
+    "setup.cfg": "da4b294a7bc1e35828a309cb9d3858157c8377e0c0b5a072ec26742a2c4083e1",
+    "setup.py": "010848870f949be42af4b7acde54c845daa6e188866a2551898707aed3eb7c89"
+  }
+}

@@ -38,6 +38,16 @@ function Assert-ButtonLabel {
     if ($control.Current.Name -ne $Expected) { throw "Expected $Id to show $Expected." }
 }
 
+function Get-Details {
+    $details = (Find-Control $window 'Detail').GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern)
+    return $details.Current.Value
+}
+
+function Select-Choice {
+    param([string] $Id)
+    (Find-Control $window $Id).GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
+}
+
 function Invoke-Scenario {
     param([scriptblock] $Scenario)
     $process = Start-Process -FilePath $preview -PassThru -WindowStyle Hidden
@@ -60,6 +70,11 @@ function Invoke-Scenario {
 }
 
 Invoke-Scenario {
+    $receiver = (Find-Control $window 'WalkableOrReceiver').GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern)
+    if ($receiver.Current.ToggleState -ne [System.Windows.Automation.ToggleState]::On) {
+        throw 'The WalkableOR receiver should be selected by default.'
+    }
+    Select-Choice 'DeferReceiverConfig'
     $dds = (Find-Control $window 'Dds').GetCurrentPattern([System.Windows.Automation.SelectionPattern]::Pattern)
     if ($dds.Current.GetSelection()[0].Current.Name -notlike 'Cyclone DDS*rmw_cyclonedds_cpp') {
         throw 'Cyclone DDS should be selected by default.'
@@ -75,9 +90,12 @@ Invoke-Scenario {
     }
     Invoke-Button 'NextButton'
     Wait-Status 'Review installation'
-    $details = (Find-Control $window 'Detail').GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern)
-    if ($details.Current.Value -notlike '*Create desktop shortcut*') {
+    $details = Get-Details
+    if ($details -notlike '*Create desktop shortcut*') {
         throw 'The desktop shortcut selection was missing from the plan.'
+    }
+    if ($details -notmatch '(?s)Verify ROS 2 command prompt.*Prepare WalkableOR endpoint source.*Build the WalkableOR receiver.*Verify the WalkableOR receiver.*Create Start Point Cloud Receiver shortcut') {
+        throw 'The WalkableOR build and shortcut should follow ROS verification.'
     }
     Invoke-Button 'NextButton'
     Wait-Status 'Step 1 of *'
@@ -89,15 +107,56 @@ Invoke-Scenario {
 }
 
 Invoke-Scenario {
+    Select-Choice 'DeferReceiverConfig'
     $toggle = (Find-Control $window 'Transparency').GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern)
     $toggle.Toggle()
     Invoke-Button 'NextButton'
     Wait-Status 'Review installation'
     Invoke-Button 'NextButton'
     Wait-Status 'ROS 2 Humble is ready'
+    if ((Get-Details) -notmatch 'pointcloud_receiver\\configs\\walkableOR\.yaml') {
+        throw 'The receiver completion reminder should include the configuration path.'
+    }
 }
 
 Invoke-Scenario {
+    (Find-Control $window 'WalkableOrReceiver').GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern).Toggle()
+    (Find-Control $window 'Transparency').GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern).Toggle()
+    Invoke-Button 'NextButton'
+    Wait-Status 'Review installation'
+    if ((Get-Details) -like '*WalkableOR*') { throw 'The plan should omit a deselected receiver.' }
+    Invoke-Button 'NextButton'
+    Wait-Status 'ROS 2 Humble is ready'
+    if ((Get-Details) -like '*walkableOR.yaml*') { throw 'The opt-out flow should omit the configuration reminder.' }
+}
+
+Invoke-Scenario {
+    Select-Choice 'UseLocalProject'
+    Invoke-Button 'NextButton'
+    $errorText = (Find-Control $window 'SettingsError').Current.Name
+    if ($errorText -notlike '*Choose the walkableOR_unity project folder*') {
+        throw 'The local option should ask for a folder.'
+    }
+    $project = 'C:\Example Projects\walkableOR_unity'
+    (Find-Control $window 'WalkableOrProject').GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).SetValue($project)
+    (Find-Control $window 'Transparency').GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern).Toggle()
+    Invoke-Button 'NextButton'
+    Wait-Status 'Review installation'
+    $details = Get-Details
+    if (!$details.Contains("$project\pointcloud_receiver\configs\walkableOR.yaml") -or
+        $details -notmatch '(?s)Verify the WalkableOR receiver.*Copy the WalkableOR configuration.*Create Start Point Cloud Receiver shortcut') {
+        throw 'The copy step should show the located source and follow receiver verification.'
+    }
+    Invoke-Button 'NextButton'
+    Wait-Status 'ROS 2 Humble is ready'
+    $details = Get-Details
+    if ($details -notlike '*WalkableOR configuration is ready*' -or $details -like '*Copy your walkableOR.yaml*') {
+        throw 'The completion screen should confirm the config is ready.'
+    }
+}
+
+Invoke-Scenario {
+    Select-Choice 'DeferReceiverConfig'
     (Find-Control $window 'Destination').GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).SetValue('fail')
     (Find-Control $window 'Transparency').GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern).Toggle()
     Invoke-Button 'NextButton'
@@ -106,4 +165,4 @@ Invoke-Scenario {
     Wait-Status 'Installation stopped'
 }
 
-Write-Output 'Preview defaults, shortcut selection, confirmation, abort, automatic progression, and failure tests passed.'
+Write-Output 'Preview defaults, local config, deferred config, opt-out, shortcuts, confirmation, abort, and failure tests passed.'

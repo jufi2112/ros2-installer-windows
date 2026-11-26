@@ -2,5 +2,6 @@
   <ItemGroup>
     <ProjectReference Include="../Model/Model.csproj" />
     <EmbeddedResource Include="../../packaging/payloads.json" LogicalName="payloads.json" />
+    <EmbeddedResource Include="../../packaging/receiver-source.json" LogicalName="receiver-source.json" />
   </ItemGroup>
 </Project>

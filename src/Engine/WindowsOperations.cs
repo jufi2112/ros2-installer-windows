@@ -93,7 +93,7 @@ internal static class WindowsOperations
         Directory.EnumerateFiles(root, name, SearchOption.AllDirectories).FirstOrDefault()
         ?? throw new InvalidDataException($"Expected {name} in {root}.");
 
-    public static void Shortcut(string path, string launcher)
+    public static void Shortcut(string path, string launcher, string description = "Command Prompt configured for ROS 2 Humble")
     {
         if (File.Exists(path))
         {
@@ -108,7 +108,7 @@ internal static class WindowsOperations
         dynamic link = shell.CreateShortcut(path);
         link.TargetPath = CommandPrompt;
         link.Arguments = ShortcutArguments(launcher);
-        link.Description = "Command Prompt configured for ROS 2 Humble";
+        link.Description = description;
         link.Save();
     }
 

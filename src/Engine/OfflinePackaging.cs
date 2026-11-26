@@ -18,8 +18,13 @@ public static class OfflinePackaging
 
         var payload = Path.Combine(root, "payload");
         Directory.CreateDirectory(payload);
-        foreach (var asset in Payloads.All.Where(asset => asset.Group != "vs"))
+        foreach (var asset in Payloads.All.Where(asset => asset.Group is not ("vs" or "receiver")))
             await WindowsOperations.DownloadAsync(asset, Path.Combine(payload, asset.File));
+
+        Console.WriteLine("Preparing the pinned WalkableOR endpoint source.");
+        var receiver = Path.Combine(payload, ReceiverSources.OfflineFileName);
+        await ReceiverSources.PrepareAsync(root, receiver);
+        ReceiverSources.VerifyArchive(receiver);
 
         var ros = Payloads.All.Single(asset => asset.Group == "ros");
         var environment = RosEnvironment.FromArchive(Path.Combine(payload, ros.File));

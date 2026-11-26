@@ -58,6 +58,8 @@ internal sealed partial class RosEnvironment
         var roots = Core.Split(' ').AsEnumerable();
         if (options.Development)
             roots = roots.Concat(Development.Split(' ')).Concat(_packages.Keys.Where(name => name.StartsWith("colcon-")));
+        else if (options.WalkableOrReceiver)
+            roots = roots.Concat(["colcon-ros", "colcon-package-selection"]);
         if (options.Visualization || options.Graphviz)
             roots = roots.Concat(["qt", "pyqt", "assimp", "bullet"]);
         if (options.Graphviz)

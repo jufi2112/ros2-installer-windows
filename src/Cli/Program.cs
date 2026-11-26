@@ -17,6 +17,9 @@ static async Task<int> MainAsync(string[] args)
               --visualization          Qt tools
               --graphviz               Graphviz and Qt for rqt_graph
               --opencv                 OpenCV
+              --no-walkableor-receiver Skip the WalkableOR point cloud receiver and its desktop shortcut
+              --walkableor-project PATH  Copy the config from this WalkableOR project folder
+              --replace-walkableor-config  Allow replacing a different existing receiver config
               --no-start-menu          Skip the Start menu shortcut
               --desktop                Create a desktop shortcut
               --offline                Require local payloads
@@ -69,6 +72,9 @@ static async Task<int> MainAsync(string[] args)
                 case "--visualization": options = options with { Visualization = true }; break;
                 case "--graphviz": options = options with { Graphviz = true }; break;
                 case "--opencv": options = options with { OpenCv = true }; break;
+                case "--no-walkableor-receiver": options = options with { WalkableOrReceiver = false }; break;
+                case "--walkableor-project": options = options with { WalkableOrProject = Value() }; break;
+                case "--replace-walkableor-config": options = options with { ReplaceWalkableOrConfig = true }; break;
                 case "--no-start-menu": options = options with { StartMenu = false }; break;
                 case "--desktop": options = options with { Desktop = true }; break;
                 default: throw new ArgumentException($"Unknown option {flag}.");
@@ -77,6 +83,10 @@ static async Task<int> MainAsync(string[] args)
 
         if (preview ? headless || accepted : !headless || !accepted)
             throw new ArgumentException("Use --print-plan or --headless --accept-plan.");
+        if (options.WalkableOrProject is not null && !options.WalkableOrReceiver)
+            throw new ArgumentException("--walkableor-project requires the WalkableOR receiver.");
+        if (options.ReplaceWalkableOrConfig && options.WalkableOrProject is null)
+            throw new ArgumentException("--replace-walkableor-config requires --walkableor-project.");
 
         install = new Installation(options, AppContext.BaseDirectory, container, offline);
         foreach (var reused in install.Reused) Console.WriteLine($"Reuse: {reused}");
@@ -92,7 +102,12 @@ static async Task<int> MainAsync(string[] args)
                 Console.WriteLine("Completed.\n");
             }
         }
-        if (!preview) Console.WriteLine($"ROS command prompt: {install.Launcher}");
+        if (!preview)
+        {
+            Console.WriteLine($"ROS command prompt: {install.Launcher}");
+            if (install.ReceiverCompletionMessage is { } receiverMessage)
+                Console.WriteLine(receiverMessage);
+        }
         return 0;
     }
     catch (RebootRequiredException error)

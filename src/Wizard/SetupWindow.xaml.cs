@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Windows;
+using Microsoft.Win32;
 
 namespace Ros2Setup;
 
@@ -24,6 +25,7 @@ public partial class SetupWindow : Window
         Dds.SelectedIndex = 0;
         StartMenu.IsChecked = defaults.StartMenu;
         Transparency.IsChecked = defaults.Transparency;
+        WalkableOrReceiver.IsChecked = defaults.WalkableOrReceiver;
         if (preview)
         {
             Title = "ROS 2 Humble Setup Preview";
@@ -55,10 +57,22 @@ public partial class SetupWindow : Window
     {
         try
         {
+            var includeReceiver = WalkableOrReceiver.IsChecked == true;
+            string? project = null;
+            if (includeReceiver && UseLocalProject.IsChecked == true)
+            {
+                project = WalkableOrProject.Text.Trim();
+                if (string.IsNullOrEmpty(project))
+                    throw new ArgumentException("Choose the walkableOR_unity project folder.");
+            }
+            else if (includeReceiver && DeferReceiverConfig.IsChecked != true)
+                throw new ArgumentException("Choose a local WalkableOR project or choose to supply the configuration later.");
+
             var options = new Options(Destination.Text.Trim(), Dds.SelectedIndex == 0 ? Middleware.Cyclone : Middleware.Fast,
                 Development.IsChecked == true, Visualization.IsChecked == true, Graphviz.IsChecked == true,
                 OpenCv.IsChecked == true, StartMenu.IsChecked == true, Desktop.IsChecked == true,
-                Transparency.IsChecked == true);
+                Transparency.IsChecked == true, includeReceiver, project,
+                project is not null && ReplaceWalkableOrConfig.IsChecked == true);
             var installation = _plan(options);
             _installation = installation;
             _transparency = options.Transparency;
@@ -69,7 +83,15 @@ public partial class SetupWindow : Window
         catch (Exception error)
         {
             SettingsError.Text = error.Message;
+            SettingsError.BringIntoView();
         }
+    }
+
+    private void BrowseProjectClicked(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFolderDialog { Title = "Select the walkableOR_unity project folder" };
+        if (dialog.ShowDialog(this) == true)
+            WalkableOrProject.Text = dialog.FolderName;
     }
 
     private void ShowConfirmation()
@@ -96,7 +118,12 @@ public partial class SetupWindow : Window
 
             if (_abort) Finish("Installation aborted", "No further steps were started.");
             else if (_index == installation.Steps.Count)
-                Finish("ROS 2 Humble is ready", $"Open the ROS command prompt or run:\n{installation.Launcher}");
+            {
+                var message = $"Open the ROS command prompt or run:\n{installation.Launcher}";
+                if (installation.ReceiverCompletionMessage is { } receiverMessage)
+                    message += $"\n\n{receiverMessage}";
+                Finish("ROS 2 Humble is ready", message);
+            }
             else ShowConfirmation();
         }
         catch (Exception error)

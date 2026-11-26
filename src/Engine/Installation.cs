@@ -38,6 +38,9 @@ public sealed class Installation : IInstallation, IDisposable
         _offline = forceOffline || File.Exists(Path.Combine(artifactDirectory, "offline.json"));
         _payload = _offline ? Path.Combine(artifactDirectory, "payload") : _scratch;
         _mirror = Path.Combine(_payload, "conda");
+        var receiver = options.WalkableOrReceiver ? new ReceiverWorkspace(_destination, Launcher, _log) : null;
+        receiver?.ValidateWorkspace();
+        var receiverSource = receiver is null ? null : Path.Combine(_payload, ReceiverSources.OfflineFileName);
 
         var ros = Get("ros");
         var pixi = Get("pixi");
@@ -61,10 +64,12 @@ public sealed class Installation : IInstallation, IDisposable
                 RequireFile(AssetPath(asset));
             if (options.Development && !hasVs)
                 RequireFile(Path.Combine(_payload, "vs-layout", "layout.sha256"));
+            if (receiverSource is not null) RequireFile(receiverSource);
             Add("Verify offline payloads", $"Check the selected package files against SHA-256 checksums in {_payload}.",
                 async () =>
                 {
                     foreach (var asset in needed) await Payloads.VerifyAsync(AssetPath(asset), asset.Sha256);
+                    if (receiverSource is not null) ReceiverSources.VerifyArchive(receiverSource);
                     if (environmentNeeded)
                     {
                         _environment = RosEnvironment.FromArchive(AssetPath(ros));
@@ -104,6 +109,7 @@ public sealed class Installation : IInstallation, IDisposable
         {
             var description = "Set up the pinned Python 3.10 environment and native runtime dependencies.";
             if (options.Development) description += " Include CMake, colcon, and C++ headers.";
+            else if (receiver is not null) description += " Include the Python build tools for the WalkableOR receiver.";
             if (options.Visualization || options.Graphviz) description += " Include Qt, RViz dependencies, and PyQt.";
             if (options.Graphviz) description += " Include Graphviz and its Python bindings.";
             if (options.OpenCv) description += " Include OpenCV and its Python bindings.";
@@ -140,11 +146,21 @@ public sealed class Installation : IInstallation, IDisposable
         Add("Verify the ROS command prompt",
             $"Load {Launcher}, run ros2 --help, and initialize a Python node with {options.Rmw}.",
             VerifyRosAsync);
+        if (receiver is not null) AddReceiverSteps(receiver, receiverSource!);
     }
 
     public IReadOnlyList<Step> Steps => _plan.Select(item => item.Step).ToArray();
     public IReadOnlyList<string> Reused => _reused;
     public string Launcher => Path.Combine(_destination, "ros-humble.cmd");
+    public string? ReceiverCompletionMessage
+    {
+        get
+        {
+            if (!_options.WalkableOrReceiver) return null;
+            var path = ReceiverLayout.ConfigPath(_destination);
+            return ReceiverLayout.CompletionMessage(path, _options.WalkableOrProject is not null, File.Exists(path));
+        }
+    }
     public string? LogPath => File.Exists(_log) ? _log : null;
 
     public async Task ExecuteAsync(int index)
@@ -179,7 +195,9 @@ public sealed class Installation : IInstallation, IDisposable
 
     private static Payload Get(string group) => Payloads.All.Single(asset => asset.Group == group);
     private string AssetPath(Payload asset) => Path.Combine(_payload, asset.File);
-    private string EnvironmentStamp => $"{Release}: {_options.Development} {_options.Visualization || _options.Graphviz} {_options.Graphviz} {_options.OpenCv}";
+    private string EnvironmentStamp =>
+        $"{Release}: {_options.Development} {_options.Visualization || _options.Graphviz} {_options.Graphviz} {_options.OpenCv}" +
+        (_options.WalkableOrReceiver && !_options.Development ? " walkableor-colcon" : "");
     private string EnvironmentStampPath => Path.Combine(_destination, ".ros2-environment");
 
     private bool ExistingRos()
@@ -197,6 +215,7 @@ public sealed class Installation : IInstallation, IDisposable
         File.Exists(Path.Combine(_workspace, "python.exe")) &&
         File.Exists(Path.Combine(_workspace, "Library", "bin", "libssl-1_1-x64.dll")) &&
         (!_options.Development || File.Exists(Path.Combine(_workspace, "Library", "bin", "cmake.exe"))) &&
+        (!_options.WalkableOrReceiver || File.Exists(Path.Combine(_workspace, "Scripts", "colcon.exe"))) &&
         (!_options.Graphviz || File.Exists(Path.Combine(_workspace, "Library", "bin", "dot.exe")));
 
     private async Task DownloadEnvironmentAsync()
@@ -316,6 +335,51 @@ public sealed class Installation : IInstallation, IDisposable
         Add($"Create {name} shortcut", $"Create {path}\nTarget: {Launcher}", () =>
         {
             WindowsOperations.Shortcut(path, Launcher);
+            return Task.CompletedTask;
+        });
+    }
+
+    private void AddReceiverSteps(ReceiverWorkspace receiver, string source)
+    {
+        if (receiver.HasVerifiedBuild())
+        {
+            _reused.Add($"WalkableOR endpoint build at revision {ReceiverSources.Revision}");
+        }
+        else
+        {
+            var input = _offline ? source : ReceiverSources.Upstream.Url;
+            Add("Prepare WalkableOR endpoint source",
+                $"Verify revision {ReceiverSources.Revision} from {input}.\n" +
+                $"Prepare the workspace and its config folder at {Path.GetDirectoryName(receiver.ConfigPath)}.",
+                async () =>
+                {
+                    if (!_offline) await ReceiverSources.PrepareAsync(_scratch, source);
+                    await Task.Run(() => receiver.PrepareSource(source));
+                });
+            Add("Build the WalkableOR receiver",
+                $"Run colcon build --base-paths src --merge-install --packages-select ros_tcp_endpoint in {Path.GetDirectoryName(receiver.Launcher)}.",
+                receiver.BuildAsync);
+        }
+
+        Add("Verify the WalkableOR receiver",
+            "Load the overlay and check that the endpoint, PyYAML, and PointCloud2 are available.",
+            receiver.VerifyAsync);
+        if (_options.WalkableOrProject is { } project)
+        {
+            var (step, copy) = receiver.PlanConfigCopy(project, _options.ReplaceWalkableOrConfig);
+            Add(step.Title, step.Detail, () => Task.Run(copy));
+        }
+        Add("Configure the WalkableOR launcher",
+            $"Write {receiver.Launcher}. It uses the ROS command prompt's DDS setting and reads {receiver.ConfigPath}.",
+            () => Task.Run(receiver.WriteLauncher));
+
+        var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory, Environment.SpecialFolderOption.DoNotVerify);
+        if (string.IsNullOrEmpty(desktop))
+            throw new IOException("The current user does not have a desktop folder for the WalkableOR shortcut.");
+        var path = Path.Combine(desktop, ReceiverLayout.ShortcutName + ".lnk");
+        Add("Create Start Point Cloud Receiver shortcut", $"Create {path}\nTarget: {receiver.Launcher}", () =>
+        {
+            WindowsOperations.Shortcut(path, receiver.Launcher, "Start the WalkableOR Point Cloud Receiver");
             return Task.CompletedTask;
         });
     }
