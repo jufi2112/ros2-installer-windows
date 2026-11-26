@@ -75,6 +75,18 @@
             <DockPanel x:Name="Details" Visibility="Collapsed">
                 <TextBlock x:Name="Status" DockPanel.Dock="Top" FontSize="20" FontWeight="SemiBold"
                            TextWrapping="Wrap" Margin="0,0,0,12"/>
+                <StackPanel x:Name="ProgressPanel" DockPanel.Dock="Bottom" Margin="0,14,0,0" Visibility="Collapsed">
+                    <StackPanel x:Name="CurrentStepPanel" Margin="0,0,0,12">
+                        <TextBlock Text="Current step" FontWeight="SemiBold"/>
+                        <ProgressBar x:Name="CurrentStepProgress" AutomationProperties.Name="Current step progress"
+                                     Height="12" Minimum="0" Maximum="1" Margin="0,5,0,4"/>
+                        <TextBlock x:Name="CurrentStepStatus" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <TextBlock Text="Overall progress" FontWeight="SemiBold"/>
+                    <ProgressBar x:Name="OverallProgress" AutomationProperties.Name="Overall installation progress"
+                                 Height="12" Minimum="0" Margin="0,5,0,4"/>
+                    <TextBlock x:Name="OverallStatus"/>
+                </StackPanel>
                 <TextBox x:Name="Detail" IsReadOnly="True" TextWrapping="Wrap" Padding="12"
                          Background="White" BorderBrush="#CAD4E0" VerticalScrollBarVisibility="Auto"/>
             </DockPanel>

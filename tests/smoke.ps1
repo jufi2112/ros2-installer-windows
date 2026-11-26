@@ -79,7 +79,12 @@ function Test-RosMessaging {
         $listener = Start-Process -FilePath $env:ComSpec -ArgumentList "/d /v:off /s /c `"call `"$launcher`" && ros2 run demo_nodes_py listener`"" -PassThru -WindowStyle Hidden -RedirectStandardOutput $listenerLog -RedirectStandardError "$listenerLog.err"
         $deadline = [DateTime]::UtcNow.AddSeconds(45)
         while ([DateTime]::UtcNow -lt $deadline -and !$talker.HasExited -and !$listener.HasExited) {
-            if (Select-String -LiteralPath $listenerLog -Pattern 'I heard.*Hello World' -Quiet) { return }
+            if (Select-String -LiteralPath $listenerLog -Pattern 'I heard.*Hello World' -Quiet) {
+                if (Select-String -LiteralPath "$talkerLog.err", "$listenerLog.err" -SimpleMatch 'RTI Connext DDS environment script not found' -Quiet) {
+                    throw "The ROS command prompt reported a missing RTI Connext setup script for $Backend."
+                }
+                return
+            }
             Start-Sleep -Milliseconds 500
         }
         Get-Content -LiteralPath $talkerLog, "$talkerLog.err", $listenerLog, "$listenerLog.err" | Write-Host

@@ -27,7 +27,8 @@ internal sealed partial class RosEnvironment
             if (sha.Length != 64 || !url.StartsWith(Channel, StringComparison.Ordinal))
                 throw new InvalidDataException($"Missing or invalid source for {file} in the ROS environment lock.");
             var dependencies = DependencyBlock().Match(entry.Groups[2].Value).Groups[1].Value;
-            return new Package(name, $"      - conda: {url}", new Payload("conda", file, url, sha),
+            var size = long.TryParse(SizeEntry().Match(entry.Groups[2].Value).Groups[1].Value, out var bytes) ? (long?)bytes : null;
+            return new Package(name, $"      - conda: {url}", new Payload("conda", file, url, sha, size),
                 DependencyName().Matches(dependencies).Select(match => match.Groups[1].Value).ToArray());
         }).ToDictionary(package => package.Name, StringComparer.OrdinalIgnoreCase);
 
@@ -50,7 +51,15 @@ internal sealed partial class RosEnvironment
         var kept = _lockfile.Split('\n')
             .Where(line => !line.StartsWith("      - conda:", StringComparison.Ordinal) || urls.Contains(line));
         var localChannel = new Uri(Path.GetFullPath(mirror) + Path.DirectorySeparatorChar).AbsoluteUri;
-        return string.Join('\n', kept).Replace(Channel, localChannel, StringComparison.Ordinal);
+        // Pixi can infer the platform from a channel URL, but requires it explicitly for a local package.
+        var withSubdirs = PackageEntry().Replace(string.Join('\n', kept), entry =>
+        {
+            var metadata = entry.Groups[2].Value;
+            if (SubdirEntry().IsMatch(metadata)) return entry.Value;
+            var url = entry.Groups[1].Value;
+            return $"- conda: {url}\n  subdir: {PackageSubdir(url)}\n{metadata}";
+        });
+        return withSubdirs.Replace(Channel, localChannel, StringComparison.Ordinal);
     }
 
     private Package[] SelectPackages(Options options)
@@ -82,13 +91,21 @@ internal sealed partial class RosEnvironment
     }
 
     public static string MirrorPath(string root, Payload asset) =>
-        Path.Combine(root, new Uri(asset.Url).Segments[^2].TrimEnd('/'), asset.File);
+        Path.Combine(root, PackageSubdir(asset.Url), asset.File);
+
+    private static string PackageSubdir(string url) => new Uri(url).Segments[^2].TrimEnd('/');
 
     [GeneratedRegex(@"(?m)^- conda: (https://[^\n]+)\n((?:^[ ]+[^\n]*\n)*)")]
     private static partial Regex PackageEntry();
 
     [GeneratedRegex(@"(?m)^  sha256: ([a-f0-9]{64})$")]
     private static partial Regex ShaEntry();
+
+    [GeneratedRegex(@"(?m)^  subdir:")]
+    private static partial Regex SubdirEntry();
+
+    [GeneratedRegex(@"(?m)^  size: ([0-9]+)$")]
+    private static partial Regex SizeEntry();
 
     [GeneratedRegex(@"(?m)^  depends:\n((?:^  - [^\n]*\n)*)")]
     private static partial Regex DependencyBlock();

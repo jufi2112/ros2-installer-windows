@@ -104,20 +104,27 @@ public partial class SetupWindow : Window
     private async Task ExecuteAsync()
     {
         var installation = _installation!;
+        var steps = installation.Steps;
         try
         {
             do
             {
-                var step = installation.Steps[_index];
+                var stepIndex = _index;
+                var step = steps[stepIndex];
                 Show(Page.Running, step.Title, Describe(step), "");
-                await installation.ExecuteAsync(_index);
+                var progress = new Progress<StepProgress>(update =>
+                {
+                    if (_page == Page.Running && _index == stepIndex)
+                        UpdateStepProgress(update);
+                });
+                await installation.ExecuteAsync(stepIndex, progress);
                 _completed.Add(step.Title);
                 _index++;
             }
-            while (!_abort && !_transparency && _index < installation.Steps.Count);
+            while (!_abort && !_transparency && _index < steps.Count);
 
             if (_abort) Finish("Installation aborted", "No further steps were started.");
-            else if (_index == installation.Steps.Count)
+            else if (_index == steps.Count)
             {
                 var message = $"Open the ROS command prompt or run:\n{installation.Launcher}";
                 if (installation.ReceiverCompletionMessage is { } receiverMessage)
@@ -129,7 +136,7 @@ public partial class SetupWindow : Window
         }
         catch (Exception error)
         {
-            Finish("Installation stopped", $"{installation.Steps[_index].Title}\n{error.Message}\n\nThe failed step may have made partial changes.");
+            Finish("Installation stopped", $"{steps[_index].Title}\n{error.Message}\n\nThe failed step may have made partial changes.");
         }
     }
 
@@ -149,6 +156,21 @@ public partial class SetupWindow : Window
         Status.Text = heading;
         Detail.Text = description;
         Detail.ScrollToHome();
+        ProgressPanel.Visibility = page is Page.Confirm or Page.Running or Page.Complete ? Visibility.Visible : Visibility.Collapsed;
+        CurrentStepPanel.Visibility = page == Page.Running ? Visibility.Visible : Visibility.Collapsed;
+        if (ProgressPanel.Visibility == Visibility.Visible && _installation is { } installation)
+        {
+            var count = installation.Steps.Count;
+            OverallProgress.Maximum = count;
+            OverallProgress.Value = _index;
+            OverallStatus.Text = $"{_index} of {count} steps completed";
+        }
+        if (page == Page.Running)
+        {
+            CurrentStepProgress.Value = 0;
+            CurrentStepProgress.IsIndeterminate = true;
+            CurrentStepStatus.Text = "Working…";
+        }
         BackButton.Visibility = page == Page.Review ? Visibility.Visible : Visibility.Collapsed;
         AbortButton.Visibility = page == Page.Complete ? Visibility.Collapsed : Visibility.Visible;
         AbortButton.Content = page == Page.Review ? "Cancel" : "Abort";
@@ -158,6 +180,17 @@ public partial class SetupWindow : Window
         // Confirm should require an explicit button press, including when returning to focus with Enter.
         NextButton.IsDefault = page != Page.Confirm;
         if (page == Page.Confirm) Detail.Focus();
+    }
+
+    private void UpdateStepProgress(StepProgress update)
+    {
+        CurrentStepStatus.Text = update.Message;
+        CurrentStepProgress.IsIndeterminate = update.Fraction is null;
+        if (update.Fraction is { } fraction)
+        {
+            CurrentStepProgress.Value = Math.Clamp(fraction, 0, 1);
+            OverallProgress.Value = Math.Max(OverallProgress.Value, _index + CurrentStepProgress.Value);
+        }
     }
 
     private void BackClicked(object sender, RoutedEventArgs e)

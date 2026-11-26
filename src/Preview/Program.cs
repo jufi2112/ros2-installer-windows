@@ -21,9 +21,19 @@ internal static class Program
             : null;
         public string? LogPath => null;
 
-        public async Task ExecuteAsync(int index)
+        public async Task ExecuteAsync(int index, IProgress<StepProgress>? progress = null)
         {
-            await Task.Delay(350);
+            if (index == 0)
+            {
+                for (var part = 1; part <= 8; part++)
+                {
+                    await Task.Delay(200);
+                    progress?.Report(new StepProgress(part / 8d, part == 8
+                        ? "Verified 400 MiB."
+                        : $"{part * 50} of 400 MiB   •   About {Math.Ceiling((8 - part) / 5d)}s remaining"));
+                }
+            }
+            else await Task.Delay(350);
             if (options.Destination.Equals("fail", StringComparison.OrdinalIgnoreCase) && index == 1)
                 throw new InvalidOperationException("Simulated failure while setting up prerequisites.");
         }

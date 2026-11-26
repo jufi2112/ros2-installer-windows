@@ -43,6 +43,12 @@ function Get-Details {
     return $details.Current.Value
 }
 
+function Get-ProgressBar {
+    param([string] $Id)
+    $control = Find-Control $window $Id
+    return $control.GetCurrentPattern([System.Windows.Automation.RangeValuePattern]::Pattern).Current
+}
+
 function Select-Choice {
     param([string] $Id)
     (Find-Control $window $Id).GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
@@ -101,7 +107,21 @@ Invoke-Scenario {
     Wait-Status 'Step 1 of *'
     Assert-ButtonLabel 'NextButton' 'Confirm'
     Invoke-Button 'NextButton'
+    Wait-Status 'Download and verify ROS 2 Humble'
+    $deadline = [DateTime]::UtcNow.AddSeconds(4)
+    do {
+        Start-Sleep -Milliseconds 100
+        $transfer = (Find-Control $window 'CurrentStepStatus').Current.Name
+    } while ($transfer -notlike '*MiB*remaining*' -and [DateTime]::UtcNow -lt $deadline)
+    if ($transfer -notlike '*MiB*remaining*' -or
+        (Get-ProgressBar 'CurrentStepProgress').Value -le 0 -or
+        (Get-ProgressBar 'OverallProgress').Value -le 0) {
+        throw 'Both progress bars should advance during a download and show a remaining-time estimate.'
+    }
     Wait-Status 'Step 2 of *'
+    if ((Get-ProgressBar 'OverallProgress').Value -ne 1) {
+        throw 'Overall progress should show one completed step while waiting for confirmation.'
+    }
     Invoke-Button 'AbortButton'
     Wait-Status 'Installation aborted'
 }
@@ -114,6 +134,8 @@ Invoke-Scenario {
     Wait-Status 'Review installation'
     Invoke-Button 'NextButton'
     Wait-Status 'ROS 2 Humble is ready'
+    $overall = Get-ProgressBar 'OverallProgress'
+    if ($overall.Value -ne $overall.Maximum) { throw 'Overall progress should reach the end after setup succeeds.' }
     if ((Get-Details) -notmatch 'pointcloud_receiver\\configs\\walkableOR\.yaml') {
         throw 'The receiver completion reminder should include the configuration path.'
     }
@@ -168,4 +190,4 @@ Invoke-Scenario {
     Wait-Status 'Installation stopped'
 }
 
-Write-Output 'Preview defaults, local config, deferred config, opt-out, shortcuts, confirmation, abort, and failure tests passed.'
+Write-Output 'Preview defaults, progress, local config, deferred config, opt-out, shortcuts, confirmation, abort, and failure tests passed.'

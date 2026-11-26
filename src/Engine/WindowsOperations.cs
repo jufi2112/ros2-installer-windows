@@ -7,7 +7,7 @@ using System.Text.Json;
 
 namespace Ros2Setup;
 
-internal sealed record Payload(string Group, string File, string Url, string Sha256);
+internal sealed record Payload(string Group, string File, string Url, string Sha256, long? Size = null);
 
 internal static class Payloads
 {
@@ -34,14 +34,49 @@ internal static class WindowsOperations
 {
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromMinutes(10) };
 
-    public static async Task DownloadAsync(Payload asset, string target)
+    public static Task DownloadAsync(Payload asset, string target, IProgress<StepProgress>? progress = null) =>
+        TransferAsync(asset, target, progress is null ? null : new DownloadProgress([asset], progress));
+
+    public static Task DownloadBatchAsync(Payload[] assets, Func<Payload, string> destination, IProgress<StepProgress>? progress)
+    {
+        var tracker = progress is null ? null : new DownloadProgress(assets, progress);
+        return Parallel.ForEachAsync(assets, new ParallelOptions { MaxDegreeOfParallelism = 5 },
+            async (asset, _) =>
+            {
+                var target = destination(asset);
+                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                await TransferAsync(asset, target, tracker);
+            });
+    }
+
+    private static async Task TransferAsync(Payload asset, string target, DownloadProgress? tracker)
     {
         using var response = await Http.GetAsync(asset.Url, HttpCompletionOption.ResponseHeadersRead);
         response.EnsureSuccessStatusCode();
         using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(30));
+        var total = asset.Size ?? response.Content.Headers.ContentLength;
+        long received = 0;
         await using (var file = new FileStream(target, FileMode.CreateNew, FileAccess.Write))
-            await response.Content.CopyToAsync(file, timeout.Token);
+        {
+            if (tracker is null)
+                await response.Content.CopyToAsync(file, timeout.Token);
+            else
+            {
+                await using var input = await response.Content.ReadAsStreamAsync(timeout.Token);
+                var buffer = new byte[128 * 1024];
+                tracker.Update(asset, received, total);
+                int count;
+                while ((count = await input.ReadAsync(buffer, timeout.Token)) != 0)
+                {
+                    await file.WriteAsync(buffer.AsMemory(0, count), timeout.Token);
+                    received += count;
+                    tracker.Update(asset, received, total);
+                }
+            }
+        }
+        tracker?.Update(asset, received, received, transferComplete: true);
         await Payloads.VerifyAsync(target, asset.Sha256);
+        tracker?.Update(asset, received, received, verified: true);
     }
 
     public static async Task RunAsync(string file, IEnumerable<string> args, string log, bool elevate = false,

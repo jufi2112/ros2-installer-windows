@@ -21,6 +21,8 @@ public sealed record Options(
 
 public sealed record Step(string Title, string Detail, bool RequiresAdmin = false);
 
+public readonly record struct StepProgress(double? Fraction, string Message);
+
 public static class UninstallLayout
 {
     public const string LauncherName = "Uninstall ROS 2 Humble.cmd";
@@ -52,5 +54,5 @@ public interface IInstallation
     string Uninstaller { get; }
     string? ReceiverCompletionMessage { get; }
     string? LogPath { get; }
-    Task ExecuteAsync(int index);
+    Task ExecuteAsync(int index, IProgress<StepProgress>? progress = null);
 }

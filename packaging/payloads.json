@@ -3,7 +3,8 @@
     "Group": "ros",
     "File": "ros2-humble-20260220-windows-release-amd64.zip",
     "Url": "https://github.com/ros2/ros2/releases/download/release-humble-20260220/ros2-humble-20260220-windows-release-amd64.zip",
-    "Sha256": "256abcfa37f8d97d2cb3ff2a85f53465b016a25632399c99f67dc2bee18e89c3"
+    "Sha256": "256abcfa37f8d97d2cb3ff2a85f53465b016a25632399c99f67dc2bee18e89c3",
+    "Size": 395014297
   },
   {
     "Group": "pixi",

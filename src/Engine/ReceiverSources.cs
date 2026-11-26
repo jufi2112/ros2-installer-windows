@@ -14,13 +14,14 @@ internal static class ReceiverSources
     public static string Revision => Source.Revision;
     public static string OfflineFileName => $"walkableor-endpoint-{Revision}.zip";
 
-    public static async Task PrepareAsync(string scratch, string output)
+    public static async Task PrepareAsync(string scratch, string output, IProgress<StepProgress>? progress = null)
     {
         Directory.CreateDirectory(scratch);
         var download = Path.Combine(scratch, Upstream.File);
         try
         {
-            await WindowsOperations.DownloadAsync(Upstream, download);
+            await WindowsOperations.DownloadAsync(Upstream, download, progress);
+            progress?.Report(new StepProgress(null, "Checking the endpoint source files…"));
             using var archive = ZipFile.OpenRead(download);
             var prefix = $"ROS-TCP-Endpoint-{Revision}/";
             using var filtered = ZipFile.Open(output, ZipArchiveMode.Create);

@@ -6,7 +6,7 @@ This project installs the native x64 Windows binaries from [Humble Patch Release
 
 Open `Ros2HumbleSetup.exe`. Choose the installation folder, DDS backend, optional components, and shortcuts, then review the installation plan. Cyclone DDS is selected by default. Fast DDS is available in the same menu.
 
-**Transparency Mode** is on by default. Confirm each step after reading what it will do, or abort to stop before the next step. If a vendor installer is already running, setup waits for it to exit. Completed changes are listed at the end. Running setup again checks the installation and reuses compatible prerequisites. Existing folders that belong to another installation are protected.
+**Transparency Mode** is on by default. Confirm each step after reading what it will do, or abort to stop before the next step. If a vendor installer is already running, setup waits for it to exit. The wizard shows current and overall progress. Downloads show transferred data and an estimated time remaining when their total size is known. Overall progress counts the steps in the selected plan. Completed changes are listed at the end. Running setup again checks the installation and reuses compatible prerequisites. Existing folders that belong to another installation are protected.
 
 The default folder is `C:\dev\ros2_humble`. Choose a folder your account can write to. Windows may prompt for elevation to install the Visual C++ runtime or optional Visual Studio Build Tools. The ROS command prompt sets the Python and DDS environment for that shell. Open it from a shortcut, or run this from Command Prompt:
 
@@ -30,7 +30,7 @@ The receiver uses the Windows network for ROS discovery and defaults to domain `
 
 Open **Uninstall ROS 2 Humble.cmd** in the ROS installation folder. The confirmation dialog shows the exact folder. Click **Yes** to remove it and its contents, including the installed WalkableOR YAML and any files you added. If the receiver or ROS command prompts from that installation are still running, setup lists them and resumes automatically when they close. You can cancel while it waits.
 
-Setup removes the Start menu and desktop shortcuts that still point to that installation. The shared Visual C++ Redistributable, Visual Studio Build Tools, and Windows SDK stay installed. The uninstaller uses Windows PowerShell and honors script restrictions enforced by Group Policy.
+Setup removes the Start menu and desktop shortcuts that still point to that installation. A completion dialog appears once removal succeeds. The shared Visual C++ Redistributable, Visual Studio Build Tools, and Windows SDK stay installed. The uninstaller uses Windows PowerShell and honors script restrictions enforced by Group Policy.
 
 ## Build
 

@@ -143,13 +143,17 @@ if ($MyInvocation.InvocationName -eq '.') { return }
 
 Add-Type -AssemblyName System.Windows.Forms
 try {
-    $null = Invoke-RosUninstall $PSScriptRoot {
+    $removed = Invoke-RosUninstall $PSScriptRoot {
         param([string] $Root)
         $message = "This will remove your ROS 2 installation and all associated workspaces at:`r`n`r`n$Root`r`n`r`n" +
             "This includes the WalkableOR configuration and any files in that folder.`r`n`r`nAre you sure you want to continue?"
         $choice = [System.Windows.Forms.MessageBox]::Show($message, 'Uninstall ROS 2 Humble',
             'YesNo', 'Warning', 'Button2')
         return $choice -eq [System.Windows.Forms.DialogResult]::Yes
+    }
+    if ($removed) {
+        $null = [System.Windows.Forms.MessageBox]::Show('ROS 2 Humble was uninstalled successfully.',
+            'Uninstall ROS 2 Humble', 'OK', 'Information')
     }
 }
 catch {
