@@ -1,7 +1,7 @@
 param(
     [switch] $BuildOffline,
     [switch] $PreviewOnly,
-    [string] $Dotnet = 'dotnet'
+    [string] $Dotnet
 )
 
 $ErrorActionPreference = 'Stop'
@@ -13,6 +13,33 @@ $env:NUGET_PACKAGES = Join-Path $projectRoot 'build/nuget'
 $env:DOTNET_CLI_TELEMETRY_OPTOUT = '1'
 $env:DOTNET_GENERATE_ASPNET_CERTIFICATE = 'false'
 $env:DOTNET_ADD_GLOBAL_TOOLS_TO_PATH = 'false'
+
+$portableDotnet = Join-Path $projectRoot 'build/sdk/dotnet.exe'
+$candidates = if ($Dotnet) { @($Dotnet) } else { @($portableDotnet, 'dotnet.exe') }
+$checked = @()
+$sdkVersion = $null
+foreach ($candidate in $candidates) {
+    $command = Get-Command $candidate -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (!$command) { continue }
+
+    $available = @(& $command.Source --list-sdks)
+    $checked += "$($command.Source): $($available -join ', ')"
+    if ($LASTEXITCODE -ne 0 -or !($available | Where-Object { $_ -match '^(\d+)\.' -and [int]$Matches[1] -ge 10 })) {
+        continue
+    }
+
+    $active = & $command.Source --version | Select-Object -Last 1
+    if ($LASTEXITCODE -eq 0 -and $active -match '^(\d+)\.' -and [int]$Matches[1] -ge 10) {
+        $Dotnet = $command.Source
+        $sdkVersion = $active
+        break
+    }
+    $checked += "$($command.Source) selected SDK $active"
+}
+if (!$sdkVersion) {
+    throw "This project targets .NET 10. Run .\prepare.ps1 for the local SDK, or select a compatible SDK via PATH or -Dotnet. Checked: $($checked -join '; ')"
+}
+Write-Output "Using .NET SDK $sdkVersion at $Dotnet"
 
 function Invoke-Checked {
     param([string] $File, [string[]] $Arguments)
