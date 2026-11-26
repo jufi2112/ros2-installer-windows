@@ -34,28 +34,46 @@ Setup removes the Start menu and desktop shortcuts that still point to that inst
 
 ## Build
 
-From the root of a fresh Windows x64 checkout, run:
+On a fresh Windows x64 checkout, run this from the repository root.
 
 ```powershell
 .\prepare.ps1
-.\build.ps1
 ```
 
 `prepare.ps1` downloads Microsoft's pinned .NET SDK 10.0.404 ZIP, verifies its SHA-512 checksum, and extracts it to `build\sdk`. It restores the Windows x64 NuGet dependencies for the installer, CLI, and preview into `build\nuget`. You can rerun it to reuse the SDK and restore missing packages. The first preparation needs access to Microsoft's download service and NuGet. The SDK is local to the checkout and needs no administrator access or PATH changes.
 
-The build also supports these modes:
+Build the self-contained online wizard and CLI in `dist\online` with this command.
 
 ```powershell
-.\build.ps1                 # Online wizard and CLI in dist\online
-.\build.ps1 -PreviewOnly    # Simulation-only wizard in dist\preview
-.\build.ps1 -BuildOffline   # Also creates dist\ros2-humble-offline-win-x64.zip
+.\build.ps1
 ```
+
+- `.\build.ps1 -PreviewOnly` builds the simulation-only wizard in `dist\preview`.
+- `.\build.ps1 -BuildOffline` also creates `dist\ros2-humble-offline-win-x64.zip`.
 
 The build looks for a compatible SDK at `build\sdk\dotnet.exe` first, then checks `dotnet.exe` on `PATH`. If you already have .NET 10 or newer, you can build directly and let the build restore its NuGet dependencies. Pass `-Dotnet` to use a specific SDK executable.
 
 The online installer downloads ROS, the WalkableOR endpoint, and the selected runtime dependencies when it runs. The opt-in offline build downloads those payloads and creates Microsoft's Visual Studio 2019 C++ Build Tools layout inside a Hyper-V-isolated Server Core container. For that mode, have a Windows Docker engine running and run `.\build.ps1 -BuildOffline` with internet access. The resulting ZIP includes the payloads for every menu option and can be several gigabytes. Downloaded files and build output are ignored by Git. Review the upstream redistribution terms for any bundle you publish.
 
 On the disconnected PC, extract the full ZIP and launch setup from the extracted folder. Keep `offline.json` and `payload` beside the executables. The installer verifies the packages for the chosen options against their checksums and uses local package sources. The WalkableOR payload contains the pinned endpoint build inputs. You can select a local checkout or supply the YAML later in offline mode too. The headless CLI can enforce offline mode with `--offline`.
+
+### Small online installer
+
+After running `.\prepare.ps1` to set up the local SDK, paste this line into PowerShell from the repository root.
+
+```powershell
+.\build.ps1 -FrameworkDependent
+```
+
+The wizard is written to `dist\online-framework-dependent\Ros2HumbleSetup.exe`. Distribute it with the `LICENSE` file in that folder. Users need the **.NET 10 Desktop Runtime (Windows x64)** installed before launching the wizard, plus internet access for the ROS downloads. [Microsoft runtime download](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)
+
+## License and redistribution
+
+The installer source is available under the [MIT License](LICENSE). Third-party components retain their own licenses.
+
+The self-contained Windows installer bundles .NET and WPF components covered by separate Microsoft terms. A binary release needs to include the applicable license texts and third-party notices and satisfy Microsoft's redistribution conditions, including terms for downstream distributors and end users. [Windows .NET licensing guide](https://github.com/dotnet/core/blob/main/license-information-windows.md) · [.NET Library License](https://dotnet.microsoft.com/en-us/dotnet_library_license.htm) · [Windows SDK License](https://learn.microsoft.com/en-us/legal/windows-sdk/license)
+
+See [Small online installer](#small-online-installer) for the framework-dependent build.
 
 ## Installation Paths
 The following is an overview about what gets put where on the filesystem during installation, `<ROS>` is the selected installation location:

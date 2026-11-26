@@ -2,12 +2,15 @@
 param(
     [switch] $BuildOffline,
     [switch] $PreviewOnly,
+    [switch] $FrameworkDependent,
     [string] $Dotnet
 )
 
 $ErrorActionPreference = 'Stop'
 $projectRoot = $PSScriptRoot
-if ($BuildOffline -and $PreviewOnly) { throw 'Choose either -BuildOffline or -PreviewOnly.' }
+if (@($BuildOffline, $PreviewOnly, $FrameworkDependent).Where({ $_ }).Count -gt 1) {
+    throw 'Choose only one of -BuildOffline, -PreviewOnly, or -FrameworkDependent.'
+}
 
 $env:DOTNET_CLI_HOME = Join-Path $projectRoot 'build/dotnet-home'
 $env:NUGET_PACKAGES = Join-Path $projectRoot 'build/nuget'
@@ -49,16 +52,25 @@ function Invoke-Checked {
 }
 
 function Publish-App {
-    param([string] $Project, [string] $Output)
+    param([string] $Project, [string] $Output, [bool] $SelfContained = $true)
     $source = Join-Path $projectRoot "src/$Project/$Project.csproj"
-    Invoke-Checked $Dotnet @('publish', $source, '--configuration', 'Release', '--runtime', 'win-x64',
-        '--self-contained', 'true', '-p:PublishSingleFile=true', '-p:IncludeNativeLibrariesForSelfExtract=true',
+    $arguments = @('publish', $source, '--configuration', 'Release', '--runtime', 'win-x64',
+        '--self-contained', $SelfContained.ToString().ToLowerInvariant(), '-p:PublishSingleFile=true',
         '-p:DebugType=none', '--output', $Output)
+    if ($SelfContained) { $arguments += '-p:IncludeNativeLibrariesForSelfExtract=true' }
+    Invoke-Checked $Dotnet $arguments
 }
 
 $dist = Join-Path $projectRoot 'dist'
 if ($PreviewOnly) {
     Publish-App 'Preview' (Join-Path $dist 'preview')
+    return
+}
+
+if ($FrameworkDependent) {
+    $output = Join-Path $dist 'online-framework-dependent'
+    Publish-App 'Installer' $output -SelfContained $false
+    Copy-Item -LiteralPath (Join-Path $projectRoot 'LICENSE') -Destination $output
     return
 }
 
